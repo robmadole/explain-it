@@ -24,9 +24,9 @@ Lets agents and humans review an explainer without clicking through it: read the
 - **WHEN** `explainer snap events dropped` runs
 - **THEN** `.explainer/snap/events/dropped.png` and `.explainer/snap/events/dropped.json` exist and their paths are printed
 
-#### Scenario: Browser not installed
-- **WHEN** `explainer snap` runs and Playwright or its browser is missing
-- **THEN** it exits non-zero with the exact install command to run
+#### Scenario: Browser not installed yet
+- **WHEN** `snap` or `check` runs and Playwright's Chromium isn't installed
+- **THEN** it installs Chromium once into Playwright's shared cache, with progress on stderr, and carries on; if the install fails it exits non-zero with the command to retry
 
 ### Requirement: Check
 `explainer check` SHALL exit non-zero and list every failure with section, beat and file location when any of these hold:

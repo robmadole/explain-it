@@ -1,5 +1,7 @@
 import type {Browser} from 'playwright';
-import {join} from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {createRequire} from 'node:module';
+import {dirname, join} from 'node:path';
 import {build, preview} from 'vite';
 
 import {viteConfig} from '../cli/vite-config.js';
@@ -17,23 +19,31 @@ export interface BeatSnap {
 
 export class MissingBrowser extends Error {}
 
-const INSTALL = 'npm install -D playwright && npx playwright install chromium';
+const require = createRequire(import.meta.url);
 
+// Downloads Playwright's Chromium into its shared cache, with its progress on
+// stderr so it doesn't mix with --json output.
+function installChromium() {
+  const cli = join(dirname(require.resolve('playwright')), 'cli.js');
+  return spawnSync(process.execPath, [cli, 'install', 'chromium'], {stdio: ['ignore', 2, 2]}).status === 0;
+}
+
+const missing = (error: unknown) => /Executable doesn't exist|playwright install/i.test(String(error));
+
+// A headless Chromium. Installed the first time a command needs one, so
+// people who only view explainers never download it.
 async function launch(): Promise<Browser> {
-  let chromium;
-  try {
-    ({chromium} = await import('playwright'));
-  } catch {
-    throw new MissingBrowser(`This needs Playwright, which isn't installed. Install it with:\n  ${INSTALL}`);
-  }
+  const {chromium} = await import('playwright');
   try {
     return await chromium.launch();
   } catch (error) {
-    if (/Executable doesn't exist|playwright install/i.test(String(error))) {
-      throw new MissingBrowser(`Playwright's Chromium isn't installed. Install it with:\n  npx playwright install chromium`);
-    }
-    throw error;
+    if (!missing(error)) throw error;
   }
+  process.stderr.write('Installing Chromium, which snap and check render in. This happens once.\n');
+  if (!installChromium()) {
+    throw new MissingBrowser(`Couldn't install Chromium. Retry with:\n  npx playwright install chromium`);
+  }
+  return chromium.launch();
 }
 
 // Builds and serves the explainer, opens each chosen section headless, and hands back

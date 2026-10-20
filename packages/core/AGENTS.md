@@ -6,13 +6,15 @@ You write the explainer; a human reviews it. Everything below exists so you can 
 
 ## Files
 
+A repo keeps its explainers in one folder, named in `explain-it.config.ts` at the repo root (usually `docs/explainers/`). Each explainer is a subfolder:
+
 ```
-explainer.config.ts   title, sections in order, legend, source document
-theme.ts              colours; add a role for each kind of party
+explainer.config.ts   title, sections in order, theme, legend, source document
 sections/<id>.tsx     one scene per section
+theme.ts, cast.tsx    optional: a theme or shared components, when the config or scenes outgrow one file
 ```
 
-Nothing else is needed. `.explainer/` and `dist/` are generated; never edit them.
+Nothing else is needed: no `package.json`, `tsconfig.json` or `node_modules`. Every command runs as `npx @explain-it/core <command>`. Scenes can import `@explain-it/core`, `@motion-canvas/core`, `@motion-canvas/2d` and the Font Awesome Free icon packages (`@fortawesome/free-solid-svg-icons`, `-regular-`, `-brands-`), which come with the CLI. Nothing else can be imported from outside the explainer. `.explainer/` and `dist/` are generated; never edit them.
 
 To remove or rename a section, delete or rename `sections/<id>.tsx` and its entry in `explainer.config.ts` together.
 
@@ -21,18 +23,18 @@ To remove or rename a section, delete or rename `sections/<id>.tsx` and its entr
 Work in this order. Don't skip to animation.
 
 1. **Read the source.** The config's `source` (and each section's `source` anchor) points at the document being explained. Read the part for the section you're on.
-2. **Add the section.** `npx explainer new <id> --label <Label> --source '#anchor'`.
+2. **Add the section.** From the explainer's folder: `npx @explain-it/core section <id> --label <Label> --source '#anchor'`. A new explainer starts with `npx @explain-it/core new <name>` from anywhere in the repo.
 3. **Write the outline first.** Write every `beat()` with its id and caption and an empty body:
    ```tsx
    yield* beat('stream', '`/.ba/events` is a stream of server-sent events.');
    yield* beat('named', 'Each broadcast arrives with its event name and data, unchanged.');
    ```
-   Run `npx explainer outline --section <id>` and read the story top to bottom. Show it to the human before animating if you are unsure about it. Changing the story now is cheap; after animating it is not.
+   Run `npx @explain-it/core outline --section <id>` and read the story top to bottom. Show it to the human before animating if you are unsure about it. Changing the story now is cheap; after animating it is not.
 4. **Animate.** Fill in the bodies.
-5. **Look.** `npx explainer snap <id>` writes `.explainer/snap/<id>/<beat>.png` and `.json` for every beat. Open the PNGs and look at them. The JSON lists every named node and text with its bounds in pixels.
+5. **Look.** `npx @explain-it/core snap <id>` writes `.explainer/snap/<id>/<beat>.png` and `.json` for every beat. Open the PNGs and look at them. The JSON lists every named node and text with its bounds in pixels.
 
    A snap is the frame **at the end of the beat**, which is also what the viewer looks at while reading the caption. Tokens in flight are gone by then. If the beat is about a message, leave something on screen that shows it happened: a line added to a `CodePanel` log, a state `Token` that changes, a box that `pulse`s and stays marked.
-6. **Check.** `npx explainer check` must pass. Fix every failure; don't work around the rule.
+6. **Check.** `npx @explain-it/core check` must pass. Fix every failure; don't work around the rule.
 7. Repeat 4 to 6 until the drawing says what the caption says.
 
 ## Beats
@@ -92,7 +94,7 @@ Rules:
 - `layer.add(node)` returns the layer, not the node. Keep your own reference: `const tag = (<Token … />) as Rect; layer.add(tag);`.
 - Everything is plain Motion Canvas TSX. When the kit doesn't cover something, use `@motion-canvas/2d` nodes and `@motion-canvas/core` flow (`all`, `sequence`, `waitFor`, signals) directly in the scene.
 - Don't use `Math.random()`. Use Motion Canvas's `useRandom()`, which is seeded, so snaps repeat.
-- Colours: pass a theme role name (`color="client"`) rather than a hex value. Give each kind of party a role in `theme.ts` and a legend entry whose `color` is that role's name, and keep its meaning the same in every section. Pick role colours clearly apart from the base roles below, especially `accent`, which wires use by default.
+- Colours: pass a theme role name (`color="client"`) rather than a hex value. Give each kind of party a role in the theme (`defineTheme({client: …})` in the config) and a legend entry whose `color` is that role's name, and keep its meaning the same in every section. Pick role colours clearly apart from the base roles below, especially `accent`, which wires use by default.
 
 Base theme roles:
 
@@ -136,16 +138,21 @@ Config fields: `title`, `sections: [{id, label, source?}]`, `source?`, `theme?`,
 
 ## Commands
 
+All as `npx @explain-it/core <command>`. Run the explainer commands from the explainer's folder, or pass `--root <folder>`.
+
 | Command | Use |
 |---|---|
-| `explainer new [id] [--label] [--source]` | Start an explainer, or add a section. |
-| `explainer outline [--section id] [--json]` | The narration, read from source. |
-| `explainer snap [section] [beat] [--json]` | PNG and node JSON per beat, in `.explainer/snap/`. |
-| `explainer check [--static] [--json]` | Structure, captions, types and, unless `--static`, layout at every beat. |
-| `explainer dev` | Serve for a human, reloading on change. |
-| `explainer build` | The static site, in `dist/`. |
+| `setup [dir] [--explainers <folder>]` | Set a repo up: `explain-it.config.ts`, `.gitignore`, a `CLAUDE.md` pointer. |
+| `new <name>` | Create an explainer in the repo's explainers folder. |
+| `section <id> [--label] [--source]` | Add a section to the explainer. |
+| `outline [--section id] [--json]` | The narration, read from source. |
+| `snap [section] [beat] [--json]` | PNG and node JSON per beat, in `.explainer/snap/`. |
+| `check [--static] [--json]` | Structure, captions, types and, unless `--static`, layout at every beat. |
+| `view [name\|dir]` | Open it in the browser for a human, reloading on change. |
+| `build` | The static site, in `dist/`. |
+| `guide` | This guide, for the version that's running. |
 
-`snap` and `check` need Playwright's Chromium: `npx playwright install chromium`.
+The first `snap` or `check` downloads the Chromium they render in (once, into Playwright's shared cache).
 
 ## What check failures mean
 

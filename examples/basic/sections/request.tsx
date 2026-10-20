@@ -1,8 +1,10 @@
 import {Box, beat, draw, refuse, rise, scene, Token, travel, Wire} from '@explain-it/core';
+import {faWindowMaximize} from '@fortawesome/free-regular-svg-icons';
+import {faServer} from '@fortawesome/free-solid-svg-icons';
 
 export default scene(function* ({add}) {
-  const browser = add(<Box title="Browser" note="the page" color="client" x={-560} y={-120} opacity={0} />);
-  const server = add(<Box title="Server" note="the app" x={760} y={-120} opacity={0} />);
+  const browser = add(<Box icon={faWindowMaximize} title="Browser" note="the page" color="client" x={-560} y={-120} opacity={0} />);
+  const server = add(<Box icon={faServer} title="Server" note="the app" x={760} y={-120} opacity={0} />);
   const wire = add(<Wire from={browser} to={server} />);
 
   yield* beat('parties', 'A browser and a server, with a `fetch` between them.', function* () {

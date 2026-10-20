@@ -25,7 +25,7 @@ npx playwright install chromium
 npm run build        # every workspace, core first
 npm test             # unit tests
 npm run test:e2e -w packages/core   # browser tests against built examples
-npm run dev -w examples/basic       # the basic example, live
+npm run view -w examples/basic      # the basic example, live
 ```
 
 ## Releasing

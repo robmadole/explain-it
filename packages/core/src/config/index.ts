@@ -1,6 +1,7 @@
 import {baseTheme, defineTheme, type Theme} from '../theme/index.js';
 
 export {baseTheme, defineTheme, themeCss, type BaseTheme, type Theme} from '../theme/index.js';
+export {defineRepo, REPO_CONFIG_FILE, type RepoConfig} from './repo.js';
 
 export interface SectionConfig {
   // Names sections/<id>.tsx and the #<id> link.

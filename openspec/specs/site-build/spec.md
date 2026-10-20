@@ -21,22 +21,36 @@ An explainer SHALL be declared by one `explainer.config.ts` at its root. The con
 Each section SHALL be a single file at `sections/<id>.tsx` whose default export is a scene. The consumer SHALL NOT need to write HTML pages, project files, or Motion Canvas metadata files.
 
 #### Scenario: Minimal consumer
-- **WHEN** a directory holds only `explainer.config.ts`, `sections/*.tsx` and a `package.json` depending on `@explain-it/core`
-- **THEN** `explainer dev` serves a working explainer and `explainer build` produces a static site
+- **WHEN** a directory holds only `explainer.config.ts` and `sections/*.tsx`, with no `package.json` or `node_modules` beside or above it
+- **THEN** `npx @explain-it/core view` serves a working explainer and `npx @explain-it/core build` produces a static site
 
 #### Scenario: No metadata written to the consumer
-- **WHEN** `explainer dev` or `explainer build` runs
+- **WHEN** `view` or `build` runs
 - **THEN** no `.meta` files and no generated project files are written outside the gitignored `.explainer/` directory
 
+### Requirement: Imports need no install
+Scenes and configs SHALL be able to import `@explain-it/core`, `@explain-it/core/config`, `@motion-canvas/core`, `@motion-canvas/2d` and the Font Awesome Free icon packages without installing them: they resolve from the CLI's own install, for serving, building and type checking alike.
+
+#### Scenario: Icons with nothing installed
+- **WHEN** a scene imports `faServer` from `@fortawesome/free-solid-svg-icons` in an explainer with no `node_modules`
+- **THEN** `view` and `build` render it and `check` reports no type errors
+
+### Requirement: Viewing by name
+`npx @explain-it/core view [name|dir]` SHALL serve the named explainer from the repo's explainers folder, or the folder given, and open it in the browser. With no argument it SHALL serve the explainer in the current folder, else the repo's only explainer, else ask which one (or, without a terminal, list their names and exit non-zero).
+
+#### Scenario: From elsewhere in the repo
+- **WHEN** `view live-contract` runs in any folder under the repo root
+- **THEN** it serves `docs/explainers/live-contract`
+
 ### Requirement: Static build output
-`explainer build` SHALL write a self-contained static site to `dist/` that works when served from any base path.
+`npx @explain-it/core build` SHALL write a self-contained static site to `dist/` that works when served from any base path.
 
 #### Scenario: Served from a subdirectory
 - **WHEN** `dist/` is served at `/docs/live/`
 - **THEN** the shell, every section and every asset load without 404s
 
 ### Requirement: Dev server reloads scenes
-`explainer dev` SHALL serve the explainer and, when a scene file changes, reload that section at the beat that was showing.
+`npx @explain-it/core view` SHALL serve the explainer and, when a scene file changes, reload that section at the beat that was showing.
 
 #### Scenario: Editing a caption
 - **WHEN** the viewer is on beat `rebuilt` of `events` and the caption string of that beat is edited

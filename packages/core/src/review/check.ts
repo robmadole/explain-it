@@ -2,6 +2,7 @@ import {dirname, relative} from 'node:path';
 import ts from 'typescript';
 
 import type {Explainer} from '../vite/load.js';
+import {CORE_DIR, OWN_PACKAGES, packageDir} from '../vite/own.js';
 import {failure, type Failure} from './failures.js';
 import {outline} from './outline.js';
 
@@ -56,6 +57,21 @@ const DEFAULT_OPTIONS: ts.CompilerOptions = {
   experimentalDecorators: true,
 };
 
+// Where TypeScript finds the packages an explainer imports: in core's install,
+// the same copies Vite serves, so an explainer needs no node_modules.
+function ownPaths(): Record<string, string[]> {
+  const paths: Record<string, string[]> = {
+    '@explain-it/core': [`${CORE_DIR}/dist/index.d.ts`],
+    '@explain-it/core/config': [`${CORE_DIR}/dist/config/index.d.ts`],
+  };
+  for (const name of OWN_PACKAGES) {
+    const dir = packageDir(name);
+    paths[name] = [dir];
+    paths[`${name}/*`] = [`${dir}/*`];
+  }
+  return paths;
+}
+
 // Type errors in the explainer's own files, using its tsconfig.json when it
 // has one.
 function typeCheck({root, config, sceneFile}: Explainer): Failure[] {
@@ -68,7 +84,7 @@ function typeCheck({root, config, sceneFile}: Explainer): Failure[] {
     files = [...new Set([...parsed.fileNames, ...files])];
   }
 
-  const program = ts.createProgram(files, options);
+  const program = ts.createProgram(files, {...options, paths: {...ownPaths(), ...options.paths}});
   const sections = new Map(config.sections.map(({id}) => [sceneFile(id), id]));
   return ts
     .getPreEmitDiagnostics(program)

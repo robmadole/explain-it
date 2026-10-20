@@ -1,15 +1,16 @@
 import {appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
-import {createRequire} from 'node:module';
-import {join} from 'node:path';
+import {join, relative} from 'node:path';
 import ts from 'typescript';
 
-import {CONFIG_FILE, ExplainerError, loadExplainer} from '../vite/load.js';
+import {REPO_CONFIG_FILE} from '../config/index.js';
+import {CONFIG_FILE, ExplainerError, findRepo, loadExplainer} from '../vite/load.js';
 
-const require = createRequire(import.meta.url);
-const VERSION: string = require('../../package.json').version;
+// How agents in a repo find the authoring guide: the CLI prints the one for
+// the version it runs, so nothing points into node_modules.
+export const GUIDE_COMMAND = 'npx @explain-it/core guide';
+const GUIDE_LINE = `- Explainers: run \`${GUIDE_COMMAND}\` for the authoring guide before creating or changing one.\n`;
 
-export const GUIDE = 'node_modules/@explain-it/core/AGENTS.md';
-const GUIDE_LINE = `- Explainer authoring guide: \`${GUIDE}\`. Read it before changing \`explainer.config.ts\` or \`sections/\`.\n`;
+const ID = /^[a-z0-9][a-z0-9-]*$/;
 
 function title(id: string) {
   return id.replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase());
@@ -28,58 +29,31 @@ export default scene(function* ({add}) {
 `;
 }
 
-const CONFIG = `import {defineExplainer} from '@explain-it/core/config';
-
-import {theme} from './theme';
+function configSource(heading: string) {
+  return `import {defineExplainer, defineTheme} from '@explain-it/core/config';
 
 export default defineExplainer({
-  title: 'Explainer',
-  theme,
+  title: ${JSON.stringify(heading)},
+  // Add a role for each kind of party: defineTheme({client: '#f2b84b'}).
+  theme: defineTheme({}),
   sections: [
     {id: 'intro', label: 'Intro'},
   ],
 });
 `;
-
-const THEME = `import {defineTheme} from '@explain-it/core/config';
-
-// Add roles for the parties in your explainer: defineTheme({client: '#f2b84b'}).
-export const theme = defineTheme({});
-`;
-
-const TSCONFIG = `{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "jsx": "react-jsx",
-    "jsxImportSource": "@motion-canvas/2d/lib",
-    "strict": true,
-    "skipLibCheck": true,
-    "noEmit": true,
-    "experimentalDecorators": true
-  },
-  "include": ["explainer.config.ts", "theme.ts", "sections"]
-}
-`;
-
-const SCRIPTS = {dev: 'explainer dev', build: 'explainer build', snap: 'explainer snap', check: 'explainer check'};
-const DEPENDENCIES = {
-  '@explain-it/core': `^${VERSION}`,
-  '@motion-canvas/2d': '~3.17.2',
-  '@motion-canvas/core': '~3.17.2',
-  vite: '^5.4.11',
-};
-const DEV_DEPENDENCIES = {playwright: '^1.64.1'};
-
-// Writes `file` unless it exists. Returns whether it wrote.
-function create(file: string, content: string) {
-  if (existsSync(file)) return false;
-  writeFileSync(file, content);
-  return true;
 }
 
-// Adds the pointer to the authoring guide, once.
+function repoSource(explainers: string) {
+  return `import {defineRepo} from '@explain-it/core/config';
+
+export default defineRepo({
+  // Where \`npx @explain-it/core new\` puts explainers, and where \`view\` finds them.
+  explainers: ${JSON.stringify(explainers)},
+});
+`;
+}
+
+// Adds the pointer to the authoring guide to CLAUDE.md, once.
 export function linkGuide(root: string) {
   const file = join(root, 'CLAUDE.md');
   if (!existsSync(file)) {
@@ -87,41 +61,57 @@ export function linkGuide(root: string) {
     return true;
   }
   const text = readFileSync(file, 'utf8');
-  if (text.includes(GUIDE)) return false;
+  if (text.includes(GUIDE_COMMAND)) return false;
   appendFileSync(file, `${text.endsWith('\n') ? '' : '\n'}${text.trim() ? '\n' : ''}${GUIDE_LINE}`);
   return true;
 }
 
-// Starts an explainer in `root`. Leaves files that already exist alone, except
-// for adding missing scripts and dependencies to package.json and lines to
-// .gitignore.
-export function newExplainer(root: string): string[] {
+// Adds lines to .gitignore that aren't there yet. Returns whether it wrote.
+function ignore(root: string, lines: string[]) {
+  const file = join(root, '.gitignore');
+  const text = existsSync(file) ? readFileSync(file, 'utf8') : '';
+  const have = text.split('\n');
+  const missing = lines.filter(line => !have.includes(line));
+  if (missing.length === 0) return false;
+  writeFileSync(file, `${text}${text && !text.endsWith('\n') ? '\n' : ''}${missing.join('\n')}\n`);
+  return true;
+}
+
+export interface SetupOptions {
+  // The explainers folder, relative to `root`.
+  explainers?: string;
+}
+
+// Sets a repo (or any folder) up for explainers. Leaves what's already there;
+// safe to run again. Returns the files it wrote.
+export function setup(root: string, {explainers = 'docs/explainers'}: SetupOptions = {}): string[] {
   const written: string[] = [];
-  mkdirSync(join(root, 'sections'), {recursive: true});
-  if (create(join(root, CONFIG_FILE), CONFIG)) written.push(CONFIG_FILE);
-  if (create(join(root, 'theme.ts'), THEME)) written.push('theme.ts');
-  if (create(join(root, 'tsconfig.json'), TSCONFIG)) written.push('tsconfig.json');
-  if (create(join(root, 'sections/intro.tsx'), sceneSource('Intro'))) written.push('sections/intro.tsx');
-
-  const pkgFile = join(root, 'package.json');
-  const pkg = existsSync(pkgFile) ? JSON.parse(readFileSync(pkgFile, 'utf8')) : {name: 'explainer', private: true, type: 'module'};
-  pkg.scripts = {...SCRIPTS, ...pkg.scripts};
-  pkg.dependencies = {...DEPENDENCIES, ...pkg.dependencies};
-  pkg.devDependencies = {...DEV_DEPENDENCIES, ...pkg.devDependencies};
-  writeFileSync(pkgFile, `${JSON.stringify(pkg, null, 2)}\n`);
-  written.push('package.json');
-
-  const ignoreFile = join(root, '.gitignore');
-  const ignored = existsSync(ignoreFile) ? readFileSync(ignoreFile, 'utf8').split('\n') : [];
-  const missing = ['node_modules', 'dist', '.explainer'].filter(line => !ignored.includes(line) && !ignored.includes(`${line}/`));
-  if (missing.length > 0) {
-    const text = existsSync(ignoreFile) ? readFileSync(ignoreFile, 'utf8') : '';
-    writeFileSync(ignoreFile, `${text}${text && !text.endsWith('\n') ? '\n' : ''}${missing.join('\n')}\n`);
-    written.push('.gitignore');
+  const configFile = join(root, REPO_CONFIG_FILE);
+  if (!existsSync(configFile)) {
+    writeFileSync(configFile, repoSource(explainers));
+    written.push(REPO_CONFIG_FILE);
   }
-
+  // Generated per explainer: the snap/build work folder and the built site.
+  const folder = explainers.replace(/\/+$/, '');
+  if (ignore(root, [`${folder}/*/.explainer/`, `${folder}/*/dist/`])) written.push('.gitignore');
   if (linkGuide(root)) written.push('CLAUDE.md');
   return written;
+}
+
+// Creates explainer `name` in the repo's explainers folder: a config and one
+// starter section, nothing else. Returns its folder.
+export async function newExplainer(from: string, name: string): Promise<string> {
+  if (!ID.test(name)) throw new ExplainerError([`"${name}" isn't an explainer name: use lowercase letters, digits and dashes.`]);
+  const repo = await findRepo(from);
+  if (!repo) {
+    throw new ExplainerError([`No ${REPO_CONFIG_FILE} here or above. Run \`npx @explain-it/core setup\` first.`]);
+  }
+  const dir = join(repo.explainers, name);
+  if (existsSync(dir)) throw new ExplainerError([`${relative(from, dir) || dir} already exists.`]);
+  mkdirSync(join(dir, 'sections'), {recursive: true});
+  writeFileSync(join(dir, CONFIG_FILE), configSource(title(name)));
+  writeFileSync(join(dir, 'sections/intro.tsx'), sceneSource('Intro'));
+  return dir;
 }
 
 export interface NewSection {

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "explainer dev",
+    "view": "explainer view",
     "build": "explainer build",
     "snap": "explainer snap",
     "check": "explainer check",

@@ -1,5 +1,6 @@
-import {existsSync, mkdirSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {join, relative, resolve} from 'node:path';
+import {createInterface} from 'node:readline/promises';
 import {parseArgs} from 'node:util';
 import {build, createServer} from 'vite';
 
@@ -8,32 +9,138 @@ import {drive, MissingBrowser} from '../review/drive.js';
 import {failure, formatFailure, type Failure} from '../review/failures.js';
 import {layoutChecks} from '../review/layout.js';
 import {outline, outlineMarkdown} from '../review/outline.js';
-import {CONFIG_FILE, ExplainerError, loadExplainer, WORK_DIR} from '../vite/load.js';
-import {newExplainer, newSection} from './new.js';
+import {REPO_CONFIG_FILE} from '../config/index.js';
+import {CONFIG_FILE, ExplainerError, findRepo, loadExplainer, WORK_DIR} from '../vite/load.js';
+import {CORE_DIR} from '../vite/own.js';
+import {newExplainer, newSection, setup} from './new.js';
 import {viteConfig} from './vite-config.js';
 
 export {viteConfig} from './vite-config.js';
 
-const USAGE = `Usage: explainer <command> [options]
+const USAGE = `Usage: npx @explain-it/core <command> [options]
 
-Commands:
-  new [id]                 Start an explainer here, or add section <id> to it
-  dev                      Serve the explainer, reloading on change
-  build                    Build the static site into dist/
+For people:
+  setup [dir]              Set a repo up for explainers
+  new <name>               Create an explainer in the repo's explainers folder
+  view [name|dir]          Open an explainer in the browser, reloading on change
+
+For agents writing explainers:
+  guide                    Print the authoring guide
+  section <id>             Add a section to the explainer here
   outline                  Print every section's beats and captions
   snap [section] [beat]    Render beats to .explainer/snap/ as PNG and JSON
   check                    Check structure, captions and layout
+  build                    Build the static site into dist/
 
 Run a command with --help for its options.
 `;
 
-async function dev(args: string[]) {
-  const {values} = parseArgs({args, options: {port: {type: 'string'}, root: {type: 'string', default: '.'}}});
-  const server = await createServer(viteConfig(resolve(values.root!), {server: {port: values.port ? Number(values.port) : 5173}}));
+async function setupCommand(args: string[]) {
+  const {values, positionals} = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {explainers: {type: 'string'}},
+  });
+  const root = resolve(positionals[0] ?? '.');
+  mkdirSync(root, {recursive: true});
+  const written = setup(root, {explainers: values.explainers});
+  process.stdout.write(written.length ? `${written.map(file => `✓ ${file}`).join('\n')}\n` : '✓ Already set up.\n');
+  process.stdout.write('\nNext: npx @explain-it/core new <name>\n');
+  return 0;
+}
+
+async function create(args: string[]) {
+  const {positionals} = parseArgs({args, allowPositionals: true, options: {}});
+  const [name] = positionals;
+  if (!name) {
+    process.stderr.write('✗ Name the explainer: npx @explain-it/core new <name>\n');
+    return 1;
+  }
+  const dir = await newExplainer(process.cwd(), name);
+  const shown = relative(process.cwd(), dir) || dir;
+  process.stdout.write(`✓ ${join(shown, CONFIG_FILE)}\n✓ ${join(shown, 'sections/intro.tsx')}\n\nNext: npx @explain-it/core view ${name}\n`);
+  return 0;
+}
+
+async function section(args: string[]) {
+  const {values, positionals} = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {label: {type: 'string'}, source: {type: 'string'}, root: {type: 'string', default: '.'}},
+  });
+  const [id] = positionals;
+  if (!id) {
+    process.stderr.write('✗ Name the section: npx @explain-it/core section <id>\n');
+    return 1;
+  }
+  const written = await newSection(resolve(values.root!), {id, label: values.label, source: values.source});
+  process.stdout.write(`${written.map(file => `✓ ${file}`).join('\n')}\n`);
+  return 0;
+}
+
+// The explainers in a repo's explainers folder: subfolders with a config.
+function explainersIn(folder: string) {
+  if (!existsSync(folder)) return [];
+  return readdirSync(folder, {withFileTypes: true})
+    .filter(entry => entry.isDirectory() && existsSync(join(folder, entry.name, CONFIG_FILE)))
+    .map(entry => entry.name)
+    .sort();
+}
+
+// Which explainer `view` means: a folder, a name in the repo's explainers
+// folder, the explainer here, or the only one, or one the person picks.
+async function locate(arg: string | undefined): Promise<string> {
+  const cwd = process.cwd();
+  if (arg) {
+    const path = resolve(arg);
+    if (existsSync(join(path, CONFIG_FILE))) return path;
+    const repo = await findRepo(cwd);
+    if (repo && existsSync(join(repo.explainers, arg, CONFIG_FILE))) return join(repo.explainers, arg);
+    throw new ExplainerError([
+      `No explainer "${arg}": it isn't a folder with ${CONFIG_FILE}${repo ? `, or a name in ${relative(cwd, repo.explainers) || '.'}` : ''}.`,
+    ]);
+  }
+  if (existsSync(join(cwd, CONFIG_FILE))) return cwd;
+  const repo = await findRepo(cwd);
+  if (!repo) {
+    throw new ExplainerError([`No explainer here, and no ${REPO_CONFIG_FILE} here or above. Run \`npx @explain-it/core setup\`, or pass a folder.`]);
+  }
+  const names = explainersIn(repo.explainers);
+  if (names.length === 0) {
+    throw new ExplainerError([`No explainers in ${relative(cwd, repo.explainers) || '.'} yet. Create one with \`npx @explain-it/core new <name>\`.`]);
+  }
+  if (names.length === 1) return join(repo.explainers, names[0]);
+  if (!process.stdin.isTTY) throw new ExplainerError([`Name the explainer to view: ${names.join(', ')}.`]);
+
+  names.forEach((name, i) => process.stdout.write(`  ${i + 1}. ${name}\n`));
+  const prompt = createInterface({input: process.stdin, output: process.stdout});
+  const answer = (await prompt.question('Which one? ')).trim();
+  prompt.close();
+  const picked = names[Number(answer) - 1] ?? names.find(name => name === answer);
+  if (!picked) throw new ExplainerError([`No explainer "${answer}".`]);
+  return join(repo.explainers, picked);
+}
+
+async function view(args: string[]) {
+  const {values, positionals} = parseArgs({
+    args,
+    allowPositionals: true,
+    allowNegative: true,
+    options: {port: {type: 'string'}, open: {type: 'boolean', default: true}, root: {type: 'string'}},
+  });
+  const root = values.root ? resolve(values.root) : await locate(positionals[0]);
+  const server = await createServer(
+    viteConfig(root, {server: {port: values.port ? Number(values.port) : 5173, open: values.open}}),
+  );
   await server.listen();
   server.printUrls();
   // Runs until interrupted.
   await new Promise(() => {});
+  return 0;
+}
+
+async function guide() {
+  process.stdout.write(readFileSync(join(CORE_DIR, 'AGENTS.md'), 'utf8'));
   return 0;
 }
 
@@ -137,24 +244,14 @@ async function check(args: string[]) {
   return failures.length === 0 ? 0 : 1;
 }
 
-async function create(args: string[]) {
-  const {values, positionals} = parseArgs({
-    args,
-    allowPositionals: true,
-    options: {label: {type: 'string'}, source: {type: 'string'}, root: {type: 'string', default: '.'}},
-  });
-  const root = resolve(values.root!);
-  const [id] = positionals;
-  const written: string[] = [];
-  if (!id || !existsSync(join(root, CONFIG_FILE))) written.push(...newExplainer(root));
-  if (id) written.push(...(await newSection(root, {id, label: values.label, source: values.source})));
-  process.stdout.write(`${[...new Set(written)].map(file => `✓ ${file}`).join('\n')}\n`);
-  return 0;
-}
-
 const commands: Record<string, (args: string[]) => Promise<number>> = {
+  setup: setupCommand,
   new: create,
-  dev,
+  view,
+  // The old name for view.
+  dev: view,
+  guide,
+  section,
   build: buildSite,
   outline: outlineCommand,
   snap,
@@ -162,12 +259,29 @@ const commands: Record<string, (args: string[]) => Promise<number>> = {
 };
 
 const HELP: Record<string, string> = {
-  new: `Usage: explainer new [id] [--label <label>] [--source <anchor>] [--root <dir>]
+  setup: `Usage: npx @explain-it/core setup [dir] [--explainers <folder>]
 
-Without an id, starts an explainer in the directory. With one, adds section
-<id>: a scene file and a config entry. Remove a section by deleting both.
+Writes explain-it.config.ts (explainers in docs/explainers unless --explainers
+says otherwise), adds the generated folders to .gitignore, and points
+CLAUDE.md at the guide. Safe to run again.
 `,
-  dev: 'Usage: explainer dev [--port <port>] [--root <dir>]\n',
+  new: `Usage: npx @explain-it/core new <name>
+
+Creates <explainers folder>/<name>/ with explainer.config.ts and one starter
+section. Run it anywhere under a folder that has explain-it.config.ts.
+`,
+  view: `Usage: npx @explain-it/core view [name|dir] [--port <port>] [--no-open]
+
+Serves an explainer and opens it in the browser. With no name: the explainer
+in this folder, or the only one in the repo, or pick from the list.
+`,
+  dev: 'Usage: npx @explain-it/core dev [name|dir]\n\nThe old name for view.\n',
+  guide: 'Usage: npx @explain-it/core guide\n\nPrints the authoring guide for this version.\n',
+  section: `Usage: npx @explain-it/core section <id> [--label <label>] [--source <anchor>] [--root <dir>]
+
+Adds section <id> to the explainer: a scene file and a config entry. Remove a
+section by deleting both.
+`,
   build: 'Usage: explainer build [--root <dir>]\n\nBuilds the static site into dist/.\n',
   outline: 'Usage: explainer outline [--section <id>] [--json] [--root <dir>]\n',
   snap: `Usage: explainer snap [section] [beat] [--json] [--root <dir>]

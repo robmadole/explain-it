@@ -2,43 +2,46 @@
 
 ## Purpose
 
-Starting an explainer or a section from the command line, and giving any agent working in the consumer's repo the authoring rules it needs.
+Setting a repo up for explainers, creating explainers and sections from the command line, and giving any agent working in the repo the authoring rules it needs.
 
 ## Requirements
 
-### Requirement: New explainer
-`explainer new` in a directory without an `explainer.config.ts` SHALL create the config, a `theme.ts`, a `package.json` with the four scripts (`dev`, `build`, `snap`, `check`), a `.gitignore` covering `dist/` and `.explainer/`, a `tsconfig.json`, and one starter section with one beat.
+### Requirement: Repo setup
+`npx @explain-it/core setup [dir]` SHALL write `explain-it.config.ts` naming the explainers folder (`docs/explainers` unless `--explainers` says otherwise), add the explainers' generated folders to `.gitignore`, and point `CLAUDE.md` at the guide. It SHALL leave existing files' content in place and be safe to run again.
 
-#### Scenario: Empty directory
-- **WHEN** `explainer new` runs in an empty directory and dependencies are installed
-- **THEN** `explainer dev` serves a one-section explainer and `explainer check` passes
+#### Scenario: Fresh repo
+- **WHEN** `setup` runs at the root of a repo with none of these files
+- **THEN** `explain-it.config.ts`, `.gitignore` and `CLAUDE.md` exist, and `new` can create explainers under `docs/explainers/`
+
+#### Scenario: Run twice
+- **WHEN** `setup` runs a second time
+- **THEN** it writes nothing, and `CLAUDE.md` and `.gitignore` hold each line once
+
+### Requirement: New explainer
+`npx @explain-it/core new <name>`, run anywhere under a folder with `explain-it.config.ts`, SHALL create `<explainers folder>/<name>/` holding only `explainer.config.ts` and `sections/intro.tsx` with one beat. It SHALL refuse an invalid name or an existing folder, and without a repo config SHALL say to run `setup`.
+
+#### Scenario: Only content and config
+- **WHEN** `new live-contract` runs in a set-up repo
+- **THEN** `docs/explainers/live-contract/` holds `explainer.config.ts` and `sections/intro.tsx`, and `check` passes on it with nothing installed
+
+#### Scenario: Not set up
+- **WHEN** `new one` runs where there is no `explain-it.config.ts` here or above
+- **THEN** it fails without writing anything and says to run `npx @explain-it/core setup` first
 
 ### Requirement: New section
-`explainer new <id>` in an existing explainer SHALL create `sections/<id>.tsx` with one placeholder beat and append the section to the config. `--label` SHALL set the nav label and `--source` SHALL set the source anchor.
+`npx @explain-it/core section <id>` in an explainer SHALL create `sections/<id>.tsx` with one placeholder beat and append the section to the config. `--label` SHALL set the nav label and `--source` SHALL set the source anchor.
 
 #### Scenario: Adding a section
-- **WHEN** `explainer new events --label Events --source '#events'` runs
+- **WHEN** `section events --label Events --source '#events'` runs
 - **THEN** `sections/events.tsx` exists and the config's last section is `{id: 'events', label: 'Events', source: '#events'}`
 
 #### Scenario: Existing id
-- **WHEN** `explainer new events` runs and `events` is already in the config
+- **WHEN** `section events` runs and `events` is already in the config
 - **THEN** the command fails without writing anything and says the section exists
 
 ### Requirement: Agent authoring guide
-The package SHALL ship an `AGENTS.md` that covers:
-- the outline-first workflow
-- one idea per beat
-- caption style
-- the canvas coordinate system
-- using wires and anchors instead of edge math
-- running `snap` and `check` after each change
+The package SHALL ship an `AGENTS.md` that covers the outline-first workflow, one thing to look at per beat, caption style, the canvas coordinate system, wires and anchors instead of edge math, and running `snap` and `check` after each change. `npx @explain-it/core guide` SHALL print it, so an agent reads the guide for the version that runs.
 
-`explainer new` SHALL add a pointer to it in the consumer's `CLAUDE.md`, creating the file if needed and never duplicating the pointer.
-
-#### Scenario: Existing CLAUDE.md
-- **WHEN** the consumer's `CLAUDE.md` already has content and no pointer
-- **THEN** one line pointing at `node_modules/@explain-it/core/AGENTS.md` is appended and the rest is unchanged
-
-#### Scenario: Run twice
-- **WHEN** `explainer new` runs a second time
-- **THEN** `CLAUDE.md` still contains the pointer exactly once
+#### Scenario: Reading the guide
+- **WHEN** an agent runs `npx @explain-it/core guide`
+- **THEN** it prints `AGENTS.md` from the installed package

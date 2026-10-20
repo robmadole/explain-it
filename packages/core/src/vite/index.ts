@@ -5,6 +5,7 @@ import {searchForWorkspaceRoot, type Plugin} from 'vite';
 
 import {themeCss} from '../theme/index.js';
 import {CONFIG_FILE, loadExplainer, WORK_DIR, type Explainer} from './load.js';
+import {CORE_DIR, ownAliases, packageDir} from './own.js';
 
 export {ExplainerError, loadExplainer, type Explainer} from './load.js';
 
@@ -53,7 +54,8 @@ export function explainer({root = process.cwd()}: ExplainerPluginOptions = {}): 
         // Hashes in the section pages are beats, not routes.
         appType: 'mpa',
         server: {
-          fs: {allow: [searchForWorkspaceRoot(root), dirname(require.resolve('@explain-it/core/package.json'))]},
+          // The explainer, and core's install with everything it brings.
+          fs: {allow: [searchForWorkspaceRoot(root), CORE_DIR, dirname(require.resolve('@motion-canvas/core/package.json'))]},
           // The pages are generated; the scenes and config are what change.
           watch: {ignored: ['**/.explainer/**', '**/dist/**']},
         },
@@ -68,7 +70,7 @@ export function explainer({root = process.cwd()}: ExplainerPluginOptions = {}): 
           },
         },
         esbuild: {jsx: 'automatic', jsxImportSource: '@motion-canvas/2d/lib'},
-        resolve: {dedupe: ['@motion-canvas/core', '@motion-canvas/2d']},
+        resolve: {alias: ownAliases(), dedupe: ['@motion-canvas/core', '@motion-canvas/2d']},
         optimizeDeps: {
           // The runtime imports this plugin's virtual modules, which a
           // pre-bundle couldn't resolve.
@@ -128,10 +130,9 @@ export function explainer({root = process.cwd()}: ExplainerPluginOptions = {}): 
 
 const require = createRequire(import.meta.url);
 
-function version(name: string, root: string) {
+function version(name: string) {
   try {
-    const path = createRequire(join(root, 'package.json')).resolve(`${name}/package.json`);
-    return JSON.parse(readFileSync(path, 'utf8')).version as string;
+    return JSON.parse(readFileSync(join(packageDir(name), 'package.json'), 'utf8')).version as string;
   } catch {
     return null;
   }
@@ -140,7 +141,7 @@ function version(name: string, root: string) {
 // A Motion Canvas project holding one section's scene. The meta files are in
 // memory only (source `false`), so nothing is ever written next to the scene.
 function projectModule({config, sceneFile}: Explainer, id: string, root: string) {
-  const versions = {core: version('@motion-canvas/core', root), two: version('@motion-canvas/2d', root), ui: null, vitePlugin: null};
+  const versions = {core: version('@motion-canvas/core'), two: version('@motion-canvas/2d'), ui: null, vitePlugin: null};
   const sceneMeta = {version: 0, timeEvents: [], seed: config.seed};
   return `\
 import {bootstrap, MetaFile, ValueDispatcher} from '@motion-canvas/core';
