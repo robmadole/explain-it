@@ -1,3 +1,7 @@
 node_modules
 dist
 .explainer
+
+# Scratch copies made by tests.
+packages/core/test/.tmp
+*.tgz

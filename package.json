@@ -1,13 +1,21 @@
 {
-  "name": "@explain-it/core",
-  "version": "0.0.0",
-  "description": "Agent-driven animated explainers, built on Motion Canvas.",
+  "name": "explain-it",
+  "private": true,
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/robmadole/explain-it.git"
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
-    "@fission-ai/openspec": "^1.9.0"
+    "@fission-ai/openspec": "^1.9.0",
+    "@types/node": "22.20.5",
+    "playwright": "^1.64.1",
+    "typescript": "5.6.3",
+    "vitest": "2.1.9"
   }
 }

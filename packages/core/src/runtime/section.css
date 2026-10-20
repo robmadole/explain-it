@@ -1,0 +1,134 @@
+@import './base.css';
+
+body {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.stage {
+  min-height: 0;
+  cursor: pointer;
+}
+
+.stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 16px 16px 24px;
+}
+
+.controls > button {
+  min-width: 180px;
+  padding: 12px 20px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: 600 16px var(--font);
+  cursor: pointer;
+}
+
+.controls > button:hover {
+  border-color: var(--muted);
+}
+
+.controls > button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.controls > .next {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.controls > button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.controls > button:disabled:hover {
+  border-color: var(--rule);
+  filter: none;
+}
+
+.controls > .next:disabled:hover {
+  border-color: var(--accent);
+}
+
+.controls > .next:hover {
+  filter: brightness(1.1);
+}
+
+/* One dot per beat of the animation. */
+.beats {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each dot is a button to its beat. The button is larger than the dot so it
+   is easy to hit. */
+.beats button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.beats button::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--rule);
+  border-radius: 50%;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    transform 0.2s;
+}
+
+.beats button:hover::before {
+  border-color: var(--muted);
+  transform: scale(1.3);
+}
+
+.beats button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  border-radius: 50%;
+}
+
+.beats li.is-current button::before {
+  border-color: var(--accent);
+}
+
+.beats li.is-done button::before {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.error {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 32px;
+  color: var(--danger);
+  font: 600 20px var(--mono);
+  text-align: center;
+}

@@ -21,6 +21,14 @@ context: |
   - Scenes stay plain Motion Canvas TSX. No DSL; the library is helpers and
     components, so anything it doesn't cover is written by hand in place.
 
+  Repo layout: a monorepo, since more packages may follow. npm workspaces.
+  The root package.json is private and holds only workspace config, shared dev
+  tooling and OpenSpec. Published packages live in packages/<name> and are
+  named @explain-it/<name>; @explain-it/core is the first, in packages/core.
+  Example explainers used as fixtures live in examples/<name>, private. Shared
+  TypeScript settings live in a root tsconfig.base.json. Split a package out
+  only when it has its own reason to exist; until then, one package.
+
   Tech stack: TypeScript, Motion Canvas 3.17 (@motion-canvas/core, /2d) as peer
   dependencies, Vite 5, Playwright for headless snap.
 
