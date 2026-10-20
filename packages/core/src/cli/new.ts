@@ -33,7 +33,7 @@ function configSource(heading: string) {
   return `import {defineExplainer, defineTheme} from '@explain-it/core/config';
 
 export default defineExplainer({
-  title: ${JSON.stringify(heading)},
+  title: ${quote(heading)},
   // Add a role for each kind of party: defineTheme({client: '#f2b84b'}).
   theme: defineTheme({}),
   sections: [
@@ -48,7 +48,7 @@ function repoSource(explainers: string) {
 
 export default defineRepo({
   // Where \`npx @explain-it/core new\` puts explainers, and where \`view\` finds them.
-  explainers: ${JSON.stringify(explainers)},
+  explainers: ${quote(explainers)},
 });
 `;
 }

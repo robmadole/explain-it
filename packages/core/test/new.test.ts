@@ -20,6 +20,7 @@ describe('setup', () => {
     expect(setup(repo)).toEqual(['explain-it.config.ts', '.gitignore', 'CLAUDE.md']);
     expect(read('.gitignore')).toBe('docs/explainers/*/.explainer/\ndocs/explainers/*/dist/\n');
     expect(read('CLAUDE.md')).toContain(GUIDE_COMMAND);
+    expect(read('explain-it.config.ts')).toContain("explainers: 'docs/explainers',");
     await expect(findRepo(repo)).resolves.toEqual({root: repo, explainers: join(repo, 'docs/explainers')});
   });
 
@@ -62,6 +63,7 @@ describe('newExplainer', () => {
     expect(readdirSync(join(dir, 'sections'))).toEqual(['intro.tsx']);
     const {config} = await loadExplainer(dir);
     expect(config).toMatchObject({title: 'Live contract', sections: [{id: 'intro', label: 'Intro'}]});
+    expect(readFileSync(join(dir, 'explainer.config.ts'), 'utf8')).toContain("title: 'Live contract',");
   });
 
   it('needs setup first', async () => {
