@@ -4,7 +4,7 @@
 
 - [x] 1.1 Turn the root `package.json` into a private workspace root (`workspaces: ["packages/*", "examples/*"]`, shared dev deps `typescript`, `vitest`, `@fission-ai/openspec`) and add `tsconfig.base.json`; verify `npm install` succeeds from the root
 - [x] 1.2 Create `packages/core` as `@explain-it/core` with peer deps `@motion-canvas/core` and `@motion-canvas/2d` `~3.17.2` and `vite` `^5`, dependencies `esbuild` and `typescript`, optional peer `playwright`, the `bin: explainer` entry, and `exports` for `.`, `./config` and `./vite`; verify `npm ls -w packages/core` resolves with no missing peers
-- [ ] 1.3 Add the root scripts `build`, `test` and `typecheck` that run across workspaces, plus a GitHub Actions workflow that runs them on push; verify the workflow passes on an empty test suite
+- [x] 1.3 Add the root scripts `build`, `test` and `typecheck` that run across workspaces, plus a GitHub Actions workflow that runs them on push; verify the workflow passes on an empty test suite
 
 ## 2. Site build
 
@@ -47,7 +47,7 @@
 - [x] 7.4 Add snap mode to the runtime (`?snap`): transitions off, `window.__explainer` with `beats()`, `seek()` and `nodes()`, and wait for fonts; verify by calling it from Playwright on `examples/basic`
 - [x] 7.5 Implement `snap [section] [beat]` writing PNG and JSON files to `.explainer/snap/`, printing the paths, and giving an install hint when Playwright is missing; verify that two runs produce identical PNGs
 - [x] 7.6 Implement the layout rules on snap JSON (off-frame, text over text, node over caption, with a `data-allow-overlap` opt-out) and wire them into `check`; verify each rule with JSON fixtures and that `explainer check` exits 0 on `examples/basic`
-- [ ] 7.7 Run `build`, `outline`, `snap` and `check` on `examples/basic` in CI with Playwright Chromium installed; verify the workflow passes
+- [x] 7.7 Run `build`, `outline`, `snap` and `check` on `examples/basic` in CI with Playwright Chromium installed; verify the workflow passes
 
 ## 8. Scaffolding and agent guide
 
