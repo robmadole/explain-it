@@ -77,19 +77,32 @@ describe('player', () => {
     await pausedAt(page, '#request/parties');
   }, 30000);
 
-  it('jumps to a beat from its dot', async () => {
+  it('plays a beat from its dot', async () => {
     const {page} = await open(browser, `${site.url}#request/refused`);
     await pausedAt(page, '#request/refused');
     const dots = section(page).locator('.beats button');
+    const playing = () => page.waitForFunction(
+      () => document.querySelector<HTMLIFrameElement>('iframe.section')?.contentDocument?.body?.dataset.beat === '',
+      undefined,
+      {timeout: 2000},
+    );
     await expect(dots.nth(0).getAttribute('aria-label')).resolves.toBe('Step 1 of 3');
 
+    // Back to an earlier beat: it plays, then pauses at its end.
+    await dots.nth(1).click();
+    await playing();
+    await pausedAt(page, '#request/get');
+    await expect(section(page).locator('.beats li.is-done').count()).resolves.toBe(2);
+
+    // The first beat plays from the very start.
     await dots.nth(0).click();
     await pausedAt(page, '#request/parties');
     await expect(dots.nth(0).getAttribute('aria-current')).resolves.toBe('step');
 
+    // Ahead to the beat right after the current one.
     await dots.nth(1).click();
+    await playing();
     await pausedAt(page, '#request/get');
-    await expect(section(page).locator('.beats li.is-done').count()).resolves.toBe(2);
   }, 30000);
 
   it('stops at the end of the last section', async () => {
@@ -111,6 +124,36 @@ describe('player', () => {
     await expect(next.isDisabled()).resolves.toBe(false);
   }, 30000);
 
+  it('renders at the stage size in device pixels, but snaps at 1x', async () => {
+    const page = await browser.newPage({viewport: {width: 1280, height: 860}, deviceScaleFactor: 2});
+    await page.goto(`${site.url}sections/request.html`);
+    // 1280 CSS px at 2x is 2560 device px, 1.33 of 1920: rounded up to 1.5x.
+    await page.waitForFunction(() => document.querySelector('canvas')?.width === 2880, undefined, {timeout: 10000});
+    await expect(page.evaluate(() => document.querySelector('canvas')!.height)).resolves.toBe(1620);
+
+    await page.goto(`${site.url}sections/request.html?snap`);
+    await page.waitForFunction(() => window.__explainer);
+    await page.evaluate(() => window.__explainer!.seek('parties'));
+    await expect(page.evaluate(() => [document.querySelector('canvas')!.width, document.querySelector('canvas')!.height])).resolves.toEqual([
+      1920, 1080,
+    ]);
+    await page.close();
+  }, 30000);
+
+  it('keeps Back and Next in place as labels and dots change', async () => {
+    const {page} = await open(browser, `${site.url}#request/parties`);
+    await pausedAt(page, '#request/parties');
+    const frame = section(page);
+    const where = async () => [await frame.locator('.back').boundingBox(), await frame.locator('.next').boundingBox()];
+
+    // "← Previous section" and "Next →".
+    const first = await where();
+    await frame.locator('.beats button').nth(2).click();
+    await pausedAt(page, '#request/refused');
+    // "← Back" and "Next section →".
+    expect(await where()).toEqual(first);
+  }, 30000);
+
   it('steps beats with Back without adding history entries', async () => {
     const {page} = await open(browser, `${site.url}#request/refused`);
     await pausedAt(page, '#request/refused');
@@ -118,5 +161,22 @@ describe('player', () => {
     await section(page).locator('.back').click();
     await pausedAt(page, '#request/get');
     await expect(page.evaluate(() => history.length)).resolves.toBe(length);
+  }, 30000);
+});
+
+describe('section changes', () => {
+  it('fade the next section in over the last, leaving one frame', async () => {
+    const {page, errors} = await open(browser, `${site.url}#request/refused`);
+    await pausedAt(page, '#request/refused');
+    const frames = () => page.evaluate(() => [...document.querySelectorAll('.frames iframe')].map(f => f.className));
+
+    await section(page).locator('.next').click();
+    // While the next section loads, the old one is still on screen.
+    await page.waitForFunction(() => document.querySelectorAll('.frames iframe').length === 2);
+    await expect(frames()).resolves.toEqual(['section', 'section is-loading']);
+    await pausedAt(page, '#response/body');
+    await page.waitForFunction(() => document.querySelectorAll('.frames iframe').length === 1);
+    await expect(frames()).resolves.toEqual(['section']);
+    expect(errors).toEqual([]);
   }, 30000);
 });

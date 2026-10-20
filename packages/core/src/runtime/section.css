@@ -17,16 +17,30 @@ body {
   object-fit: contain;
 }
 
+/* Back, the dots and Next sit in fixed slots, so the buttons stay put however
+   many beats a section has and whatever their labels say. The middle slot
+   fits 12 dots, the most `explainer check` allows. */
 .controls {
-  display: flex;
+  --dot-slot: 374px;
+
+  display: grid;
+  grid-template-columns: 1fr minmax(0, var(--dot-slot)) 1fr;
   align-items: center;
-  justify-content: center;
   gap: 28px;
   padding: 16px 16px 24px;
 }
 
+.controls > .back {
+  justify-self: end;
+}
+
+.controls > .next {
+  justify-self: start;
+}
+
 .controls > button {
-  min-width: 180px;
+  /* Wide enough for "← Previous section", so a label change can't move it. */
+  width: 210px;
   padding: 12px 20px;
   border: 1px solid var(--rule);
   border-radius: 999px;
@@ -72,6 +86,8 @@ body {
 /* One dot per beat of the animation. */
 .beats {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 10px;
   margin: 0;
   padding: 0;

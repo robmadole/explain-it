@@ -200,7 +200,7 @@ function writePages({root, config}: Explainer) {
 ${links.join('\n')}
       </ol>
     </nav>
-    <iframe class="section" title="Section"></iframe>`,
+    <div class="frames"></div>`,
       'shell.js',
     ),
   );

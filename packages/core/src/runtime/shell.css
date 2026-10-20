@@ -97,9 +97,34 @@ body {
   transform: scale(1.5);
 }
 
-.section {
+/* Sections stack here: the one on screen, and the next one fading in over it. */
+.frames {
+  position: relative;
+  min-height: 0;
+}
+
+.frames iframe {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   border: 0;
   display: block;
+  background: var(--bg);
+  transition: opacity 0.25s ease-out;
+}
+
+.frames iframe.is-loading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.frames iframe.leaving {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frames iframe {
+    transition: none;
+  }
 }

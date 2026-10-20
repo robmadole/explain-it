@@ -35,10 +35,34 @@ function forward() {
   else if (!isLast) leave(1);
 }
 
-// Jumps to the end of beat `index`, from a dot.
-function goTo(index: number) {
-  const slide = presenter?.onSlidesChanged.current[index];
-  if (slide) presenter!.requestSlide(slide.id);
+// Plays beat `index` from its start, from a dot. A slide marks the end of a
+// beat, so this pauses at the end of the beat before and then resumes. The
+// first beat has no beat before it: start the section over instead.
+function play(index: number) {
+  const slides = presenter?.onSlidesChanged.current;
+  if (!presenter || !slides?.[index]) return;
+  if (index === 0) {
+    // In the shell, it fades the restarted section in; on its own, reload.
+    if (parent !== window) parent.postMessage({restart: true}, location.origin);
+    else location.replace(`${location.pathname}${location.search}`);
+    return;
+  }
+  const before = slides[index - 1].id;
+  const now = presenter.onInfoChanged.current;
+  // Already paused there: just go on.
+  if (now.isWaiting && now.currentSlideId === before) {
+    presenter.resume();
+    return;
+  }
+  // Wait for the seek to land before resuming; a resume sent with the seek
+  // is used up before it.
+  const unsubscribe = presenter.onInfoChanged.subscribe(info => {
+    if (info.isWaiting && info.currentSlideId === before) {
+      unsubscribe();
+      presenter!.resume();
+    }
+  }, false);
+  presenter.requestSlide(before);
 }
 
 function backward() {
@@ -55,8 +79,19 @@ function beatOf(slideId: string | null) {
   return slideId?.slice(slideId.indexOf(':') + 1) ?? null;
 }
 
+// Tells the shell this page has drawn something and can be faded in.
+let announced = false;
+function ready() {
+  if (announced) return;
+  announced = true;
+  parent.postMessage({ready: true}, location.origin);
+}
+
 function render() {
   const info = presenter!.onInfoChanged.current;
+  // Beats are known once the scene has run and frames are being drawn; the
+  // dots below are in place by then.
+  if (info.count > 0) ready();
   // Slides mark the end of a beat, so between slides the next beat is playing.
   const index = info.index ?? -1;
   const beat = info.isWaiting ? index : index + 1;
@@ -68,7 +103,7 @@ function render() {
         const button = document.createElement('button');
         button.type = 'button';
         button.setAttribute('aria-label', `Step ${i + 1} of ${info.count}`);
-        button.addEventListener('click', () => goTo(i));
+        button.addEventListener('click', () => play(i));
         dot.append(button);
         return dot;
       }),
@@ -130,6 +165,7 @@ function fail(message: string) {
   box.setAttribute('role', 'alert');
   box.textContent = message;
   stage.replaceChildren(box);
+  ready();
 }
 
 if (load) {
@@ -138,9 +174,13 @@ if (load) {
       if (level === 'error') fail(message);
     });
     // An unknown beat matches no slide, and the section starts at the top.
-    presenter = present(stage, project, start ? `${id}:${start}` : null);
+    const snapping = new URLSearchParams(location.search).has('snap');
+    presenter = present(stage, project, {
+      slide: start ? `${id}:${start}` : null,
+      resolutionScale: snapping ? 1 : undefined,
+    });
     presenter.onInfoChanged.subscribe(render);
-    if (new URLSearchParams(location.search).has('snap')) {
+    if (snapping) {
       installSnap(id, presenter, presenter.stage.finalBuffer);
     }
   });
