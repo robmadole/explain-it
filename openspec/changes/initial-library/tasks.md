@@ -61,7 +61,7 @@
 - [x] 9.1 Capture the baseline: run `outline` against the current live-contract scenes (via a temporary config in a worktree of buildawesome-service) and save it; verify it lists 15 sections and their beats
 - [x] 9.2 In that worktree, depend on an `npm pack` tarball of core, add `explainer.config.ts`, `theme.ts` and `cast.tsx` (parties on `Box`), and delete the boilerplate listed in proposal.md; verify `explainer build` succeeds
 - [x] 9.3 Rewrite all 15 scenes on `scene`, `beat` and the kit; verify `explainer check` passes and `outline` matches the baseline from 9.1 except for deliberate edits
-- [ ] 9.4 Compare old and new with `snap` beat by beat and fix regressions; verify by reviewing the side-by-side PNGs with the user
+- [x] 9.4 Compare old and new with `snap` beat by beat and fix regressions; verify by reviewing the side-by-side PNGs with the user
 
 ## Workflow follow-up
 
