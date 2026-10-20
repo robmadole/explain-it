@@ -65,6 +65,6 @@
 
 ## Workflow follow-up
 
-- Choose a license, add `LICENSE`, and set `license` in `packages/core/package.json` before the first publish.
+- License: MIT, with the Font Awesome icon attribution in `LICENSE` (done).
 - Publish `@explain-it/core@0.1.0` with `npm publish -w packages/core`, then switch the buildawesome-service worktree from the packed tarball to the published version.
 - Archive the change once the port is merged.

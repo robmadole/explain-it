@@ -180,6 +180,8 @@ Layout rules work on the JSON alone, so they can be unit-tested with fixtures.
 
 Rollback: the service repo's port is one commit in a worktree. Dropping it leaves the old explainer in place.
 
-## Open Questions
+## License
 
-- License for the public repo and npm package. It's needed before the first publish and doesn't affect the code.
+MIT. Every dependency is MIT or Apache-2.0, and Motion Canvas is MIT. The
+kit embeds the path data of three Font Awesome Free icons, which are CC BY
+4.0; `LICENSE` carries the attribution, in the repo and in the package.

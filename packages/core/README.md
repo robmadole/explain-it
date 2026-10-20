@@ -65,3 +65,7 @@ export default scene(function* ({add}) {
 ## Links
 
 Deep links name a section and a beat: `index.html#events/rebuilt`.
+
+## License
+
+MIT. See [LICENSE](./LICENSE), which also credits the Font Awesome icons the kit embeds.

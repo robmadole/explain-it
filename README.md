@@ -27,3 +27,7 @@ npm test             # unit tests
 npm run test:e2e -w packages/core   # browser tests against built examples
 npm run dev -w examples/basic       # the basic example, live
 ```
+
+## License
+
+MIT. See [LICENSE](LICENSE), which also credits the Font Awesome icons the kit embeds.
