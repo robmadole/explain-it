@@ -66,5 +66,5 @@
 ## Workflow follow-up
 
 - License: MIT, with the Font Awesome icon attribution in `LICENSE` (done).
-- Publish `@explain-it/core@0.1.0` with `npm publish -w packages/core`, then switch the buildawesome-service worktree from the packed tarball to the published version.
+- Publish `@explain-it/core@0.1.0` as `RELEASING.md` describes (first publish by hand, then trusted publishing through the approved `Release` workflow), then switch the buildawesome-service worktree from the packed tarball to the published version.
 - Archive the change once the port is merged.

@@ -28,6 +28,10 @@ npm run test:e2e -w packages/core   # browser tests against built examples
 npm run dev -w examples/basic       # the basic example, live
 ```
 
+## Releasing
+
+See [RELEASING.md](RELEASING.md): releases publish to npm from a workflow that waits for a maintainer's approval.
+
 ## License
 
 MIT. See [LICENSE](LICENSE), which also credits the Font Awesome icons the kit embeds.

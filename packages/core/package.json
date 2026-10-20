@@ -1,6 +1,6 @@
 {
   "name": "@explain-it/core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Agent-driven animated explainers, built on Motion Canvas.",
   "license": "MIT",
   "type": "module",
@@ -58,5 +58,8 @@
     "@motion-canvas/2d": "3.17.2",
     "@motion-canvas/core": "3.17.2",
     "vite": "5.4.21"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
