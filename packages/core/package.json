@@ -1,6 +1,6 @@
 {
   "name": "@explain-it/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Agent-driven animated explainers, built on Motion Canvas.",
   "license": "MIT",
   "type": "module",
@@ -10,7 +10,7 @@
     "directory": "packages/core"
   },
   "bin": {
-    "explainer": "./bin/explainer.js"
+    "explainer": "bin/explainer.js"
   },
   "exports": {
     ".": {
