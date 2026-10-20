@@ -1,0 +1,27 @@
+schema: spec-driven
+
+context: |
+  Product: @explain-it/core, an npm package for building animated, step-through
+  explainers of technical designs (protocols, contracts, architectures). An
+  explainer is a static site: a shell with a timeline of sections, each section
+  a Motion Canvas animation that advances one beat at a time with a caption.
+
+  Origin: extracted from an ad-hoc explainer in
+  FortAwesome/buildawesome-service at docs/live-contract-motion. That project is
+  the first consumer and the test of the API.
+
+  Decisions:
+  - Agent-driven from the start. Agents author explainers; humans review and
+    edit them. Tooling exists so agents can see and check what they drew
+    (outline, snap, check).
+  - No Motion Canvas editor. No editor config, no @motion-canvas/ui, no .meta
+    files in consumer repos. Timing lives in code.
+  - Narration lives inline, in beat(id, caption, body) calls.
+  - No video export yet.
+  - Scenes stay plain Motion Canvas TSX. No DSL; the library is helpers and
+    components, so anything it doesn't cover is written by hand in place.
+
+  Tech stack: TypeScript, Motion Canvas 3.17 (@motion-canvas/core, /2d) as peer
+  dependencies, Vite 5, Playwright for headless snap.
+
+  Style: prefer the smallest thing that works. No speculative abstractions.
