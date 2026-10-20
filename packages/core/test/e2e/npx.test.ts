@@ -62,7 +62,8 @@ it('views an explainer by name from anywhere in the repo', async () => {
   server = spawn('node', [bin, 'view', 'basic', '--port', '5279', '--no-open'], {cwd: join(repo, 'docs')});
   const url = await new Promise<string>((resolve, reject) => {
     server!.stdout!.on('data', (data: Buffer) => {
-      const match = /http:\/\/localhost:\d+\//.exec(String(data));
+      // Vite colours its output on CI, bolding the port: drop the escape codes.
+      const match = /http:\/\/localhost:\d+\//.exec(String(data).replace(/\x1b\[[0-9;]*m/g, ''));
       if (match) resolve(match[0]);
     });
     server!.on('exit', code => reject(new Error(`view exited with ${code}`)));
